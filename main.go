@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/caarlos0/env/v11"
+	"github.com/gorilla/websocket"
 	"strconv"
 	datatypes "streaming-tools/dataTypes"
-
-	"github.com/gorilla/websocket"
 )
 
 /*****************************************************************************************************************
@@ -21,6 +21,18 @@ import (
  *****************************************************************************************************************
  */
 
+type Config struct {
+	TwitchKey string `env:"TWITCH_KEY"`
+}
+
+func getTwitchKey() (string, error) {
+	var cfg Config
+	if err := env.Parse(&cfg); err != nil {
+		return "", err
+	}
+	return cfg.TwitchKey, nil
+}
+
 // MARK: Constants
 const (
 	twitch_sub_url = "wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=300"
@@ -28,7 +40,6 @@ const (
 
 // MARK: Global VARS
 var websocketID string
-var broadcaster_user_id string
 
 // MARK: functions
 func main() {
