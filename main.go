@@ -1,12 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/caarlos0/env/v11"
-	"github.com/gorilla/websocket"
-	"strconv"
-	datatypes "streaming-tools/dataTypes"
 )
 
 /*****************************************************************************************************************
