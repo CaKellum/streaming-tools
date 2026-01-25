@@ -33,6 +33,20 @@ func getTwitchKey() (string, error) {
 	return cfg.TwitchKey, nil
 }
 
+type Event struct {
+	Event MessageEvent `json:"event"`
+}
+
+type MessageEvent struct {
+	ChatterUserName string  `json:"chatter_user_name"`
+	ChatMessage     Message `json:"message"`
+	Color           string  `json:"color"`
+}
+
+type Message struct {
+	Text string `json:"text"`
+}
+
 // MARK: Constants
 const (
 	twitch_sub_url = "wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=300"
@@ -44,45 +58,4 @@ var websocketID string
 // MARK: functions
 func main() {
 
-	// TODO: Want to move this some where else then have a list of messages and a Permenant reference to client
-	// 		 that when a new message comes in we write a new view to it rendering in UTF-8 for simplicity (EnGlIsH #1!)
-	conn, resp, err := websocket.DefaultDialer.Dial(twitch_sub_url, nil)
-	defer conn.Close()
-	if err != nil && resp.StatusCode >= 200 && resp.StatusCode < 299 {
-		fmt.Println(err)
-		return
-	}
-
-	lengthStr := resp.Header.Get("Content-Length")
-	length, _ := strconv.Atoi(lengthStr)
-	buf := make([]byte, length)
-	resp.Body.Read(buf)
-	var welcomeMSG datatypes.TwitchWelcomeMessage
-	fmt.Println(string(buf))
-	if welcomeErr := json.Unmarshal(buf, &welcomeMSG); welcomeErr != nil {
-		fmt.Println(welcomeErr)
-		return
-	}
-	if welcomeMSG.Payload.Session.Status != "connected" {
-		fmt.Println("issues may arrise")
-	}
-	websocketID = welcomeMSG.Payload.Session.SessionID
-
-	data, err := datatypes.ToJSON(
-		datatypes.TwitchMessageRequest{
-			RequestType: "channel.chat.message",
-			Version:     datatypes.V1,
-			Condition:   datatypes.TwitchChatCondition{},
-			Transport: datatypes.TwitchTransport{
-				Method:    datatypes.WebSocket,
-				SessionID: websocketID,
-			},
-		})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	conn.WriteMessage(0, data)
-
-	fmt.Println("Hello World!")
 }
