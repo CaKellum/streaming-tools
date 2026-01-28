@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -45,19 +46,32 @@ type Message struct {
 	Text string `json:"text"`
 }
 
+var urlSetting = flag.String("mode", "test", "flag determining if it should be a prod or test env")
+
 // MARK: functions
 func main() {
-	url := url.URL{
-		Scheme:   "wss",
-		Host:     "eventsub.wss.twitch.tv",
-		Path:     "ws",
-		RawQuery: "keepalive_timeout_seconds=300",
+	flag.Parse()
+	var wsUrl url.URL
+	if *urlSetting == "prod" {
+		wsUrl = url.URL{
+			Scheme:   "wss",
+			Host:     "eventsub.wss.twitch.tv",
+			Path:     "ws",
+			RawQuery: "keepalive_timeout_seconds=300",
+		}
+	} else {
+		wsUrl = url.URL{
+			Scheme:   "ws",
+			Host:     "localhost:8080",
+			Path:     "ws",
+			RawQuery: "keepalive_timeout_seconds=300",
+		}
 	}
 
 	interupt := make(chan os.Signal, 1)
 	signal.Notify(interupt, os.Interrupt)
 
-	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wsUrl.String(), nil)
 	if err != nil {
 		fmt.Println(err)
 	}
