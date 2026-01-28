@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/url"
@@ -46,7 +47,46 @@ type Message struct {
 	Text string `json:"text"`
 }
 
+/*
+{
+	"metadata":{
+		"message_id":"e6151fe6-6b5c-42dd-c0c2-8755601882c5",
+		"message_type":"session_welcome",
+		"message_timestamp":"2026-01-28T03:06:40.708023Z"
+	},
+	"payload":{
+		"session":{
+			"id":"92c282ea_cbf1be21",
+			"status":"connected",
+			"keepalive_timeout_seconds":300,
+			"reconnect_url":null,
+			"connected_at":"2026-01-28T03:06:40.707995Z"
+		}
+	}
+}
+*/
+
+type WelcomeMessageWrapper struct {
+	MetaData WelcomMetaData `json:"metadata"`
+	Payload  WelcomePayload `json:"payload"`
+}
+
+type WelcomMetaData struct {
+	MessageType string `json:"message_type"`
+}
+
+type WelcomePayload struct {
+	Session WelcomSession `json:"session"`
+}
+
+type WelcomSession struct {
+	Id           string `json:"id"`
+	Status       string `json:"status"`
+	ReconnectUrl string `json:"reconnect_url"`
+}
+
 var urlSetting = flag.String("mode", "test", "flag determining if it should be a prod or test env")
+var twitchWebsocketId string
 
 // MARK: functions
 func main() {
@@ -87,6 +127,11 @@ func main() {
 				return
 			}
 			fmt.Println(string(message))
+			var welcomeMessage WelcomeMessageWrapper
+			if err := json.Unmarshal(message, &welcomeMessage); err != nil {
+				fmt.Println(err)
+			}
+			twitchWebsocketId = welcomeMessage.Payload.Session.Id // sets id for websocket comunication moving forward
 		}
 	}()
 
