@@ -6,8 +6,6 @@ import (
 
 /*****************************************************************************************************************
  * TODO:																										 *
- *  - useable way to store creds in the application																 *
- *		> likely will use some dotenv package or roll my own													 *
  * 	- need to make template and index.html for screens															 *
  * 	- make a updatable webpage via net/http																		 *
  *		> web can do obs integration but could use the chance to use bobatea more and make tui version of client *
