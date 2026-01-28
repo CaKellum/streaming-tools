@@ -21,6 +21,26 @@ import (
  ******************************************************************************************
  */
 
+/*
+	outline of sub request body
+	POST https://api.twitch.tv/helix/eventsub/subscriptions
+	Client-Id: <AppClientId>
+	Authorization: Bearer <UserAccessToken>
+	Content-Type: application/json
+	{
+		"type": "channel.chat.message",
+  		"version": "1",
+  		"condition": {
+    		"broadcaster_user_id": "12345",
+    		"user_id": "67890"
+  		},
+  		"transport": {
+    		"method": "websocket",
+    		"session_id": <session id sent in welcome message>
+  		}
+	}
+*/
+
 type Config struct {
 	TwitchKey string `env:"TWITCH_KEY"`
 }
