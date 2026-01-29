@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -41,8 +43,26 @@ import (
 	}
 */
 
+type ConnRequest struct {
+	Type      string       `json:"type"`
+	Version   string       `json:"version"`
+	Condition ReqCondition `json:"condition"`
+	Transport ReqTransport `json:"transport"`
+}
+
+type ReqCondition struct {
+	BroadCasterId string `json:"broadcaster_user_id"`
+	UserId        string `json:"user_id"`
+}
+
+type ReqTransport struct {
+	Method    string `json:"method"`
+	SessionId string `json:"session_id"`
+}
+
 type Config struct {
 	TwitchKey string `env:"TWITCH_KEY"`
+	UserID    string `env:"USER_ID"`
 }
 
 func getTwitchKey() (string, error) {
@@ -66,25 +86,6 @@ type MessageEvent struct {
 type Message struct {
 	Text string `json:"text"`
 }
-
-/*
-{
-	"metadata":{
-		"message_id":"e6151fe6-6b5c-42dd-c0c2-8755601882c5",
-		"message_type":"session_welcome",
-		"message_timestamp":"2026-01-28T03:06:40.708023Z"
-	},
-	"payload":{
-		"session":{
-			"id":"92c282ea_cbf1be21",
-			"status":"connected",
-			"keepalive_timeout_seconds":300,
-			"reconnect_url":null,
-			"connected_at":"2026-01-28T03:06:40.707995Z"
-		}
-	}
-}
-*/
 
 type WelcomeMessageWrapper struct {
 	MetaData WelcomMetaData `json:"metadata"`
@@ -138,6 +139,8 @@ func main() {
 	defer conn.Close()
 	done := make(chan struct{})
 
+	recivedWelcome := false
+
 	go func() {
 		defer close(done)
 		for {
@@ -147,11 +150,60 @@ func main() {
 				return
 			}
 			fmt.Println(string(message))
-			var welcomeMessage WelcomeMessageWrapper
-			if err := json.Unmarshal(message, &welcomeMessage); err != nil {
-				fmt.Println(err)
+			if !recivedWelcome {
+				var welcomeMessage WelcomeMessageWrapper
+				if err := json.Unmarshal(message, &welcomeMessage); err != nil {
+					fmt.Println(err)
+					continue
+				}
+				twitchWebsocketId = welcomeMessage.Payload.Session.Id // sets id for websocket comunication moving forward
+				var websocketRequestConnectURL url.URL
+				if *urlSetting == "prod" {
+					websocketRequestConnectURL = url.URL{
+						Scheme: "https",
+						Host:   "api.twitch.tv",
+						Path:   "helix/eventsub/subscriptions",
+					}
+				} else {
+					websocketRequestConnectURL = url.URL{
+						Scheme: "http",
+						Host:   "localhost:2020",
+						Path:   "helix/eventsub/subscriptions",
+					}
+				}
+				reqBod := ConnRequest{
+					Type:    "channel.chat.message",
+					Version: "1",
+					Condition: ReqCondition{
+						BroadCasterId: "123456",
+						UserId:        "34567890",
+					},
+					Transport: ReqTransport{
+						Method:    "websocket",
+						SessionId: twitchWebsocketId,
+					},
+				}
+
+				data, _ := json.Marshal(reqBod)
+				req, _ := http.NewRequest(
+					http.MethodPost,
+					websocketRequestConnectURL.String(),
+					strings.NewReader(string(data)))
+				req.Header.Add("Authorization", "abc123")
+				req.Header.Add("Content-Type", "application/json")
+				req.Header.Add("AppClientId", "abs1224")
+				resp, _ := (&http.Client{}).Do(req)
+				fmt.Println(resp)
+				recivedWelcome = true
+				continue
 			}
-			twitchWebsocketId = welcomeMessage.Payload.Session.Id // sets id for websocket comunication moving forward
+			// reciving messages
+			var msg Event
+			if err := json.Unmarshal(message, &msg); err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println(msg.Event.ChatterUserName, ": ", msg.Event.ChatMessage.Text)
 		}
 	}()
 
